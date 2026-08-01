@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+import json
 from typing import Literal
-
+from types import SimpleNamespace
 from app.enums.classification_error_source import ClassificationErrorSource
 from app.enums.classification_status import ClassificationStatus
 from app.enums.email_category import EmailCategory
@@ -8,7 +9,7 @@ from app.enums.email_priority import EmailPriority
 from app.enums.mail_provider import MailProvider
 from app.enums.review_status import ReviewStatus
 from app.enums.thread_status import ThreadStatus
-from app.integrations.anthropic_client import AnthropicClassificationError
+from app.integrations.anthropic_client import AnthropicClassificationClient, AnthropicClassificationError
 from app.schemas.email_classification import (
     EmailClassificationRequest,
     EmailClassificationResult,
@@ -28,6 +29,8 @@ def make_request() -> EmailClassificationRequest:
         subject="Interview invitation",
         body="Hi, we would like to schedule a technical interview next week.",
     )
+    
+    sd
     
 def test_anthropic_classification_service(monkeypatch):
     class FakeAnthropicClient:
@@ -136,3 +139,71 @@ def test_fallback_mode_does_note_call_anthropic(monkeypatch):
     assert result.primary_category == EmailCategory.REJECTION
     assert result.classification_status == ClassificationStatus.COMPLETED
     assert result.error_source is None
+    
+def test_anthropic_classifies_application_submission(monkeypatch):
+    anthropic_response = {
+        "primary_category": "APPLICATION_SUBMISSION",
+        "secondary_categories": [],
+        "thread_status": "NEW_OUTREACH",
+        "review_status": "AUTO_CLASSIFIED",
+        "priority": "MEDIUM",
+        "classification_status": "COMPLETED",
+        "confidence": 0.96,
+        "company_name": "Acme",
+        "role_title": "Backend Engineer",
+        "action_needed": False,
+        "should_surface": True,
+        "interview_date": None,
+        "reason": (
+            "The email confirms that the candidate's application "
+            "was successfully received."
+        ),
+        "error_source": None,
+        "error_message": None,
+    }
+
+    fake_sdk_response = SimpleNamespace(
+        id="msg_test_application_submission",
+        content=[
+            SimpleNamespace(
+                type="text",
+                text=json.dumps(anthropic_response),
+            )
+        ],
+        usage=SimpleNamespace(
+            input_tokens=300,
+            output_tokens=80,
+        ),
+    )
+
+    client = AnthropicClassificationClient()
+
+    monkeypatch.setattr(
+        client.client.messages,
+        "create",
+        lambda **kwargs: fake_sdk_response,
+    )
+
+    request = EmailClassificationRequest(
+        provider="MANUAL_TEST",
+        provider_message_id="test-message-application-submission",
+        provider_thread_id="test-thread-application-submission",
+        sender_name="Acme Recruiting",
+        sender_email="recruiting@acme.example",
+        subject="Thank you for applying to Acme",
+        body=(
+            "Thank you for applying for the Backend Engineer position. "
+            "We have successfully received your application."
+        ),
+    )
+
+    result = client.classify_email(request)
+
+    assert result.primary_category == EmailCategory.APPLICATION_SUBMISSION
+    assert result.secondary_categories == []
+    assert result.company_name == "Acme"
+    assert result.role_title == "Backend Engineer"
+    assert result.confidence == 0.96
+    assert result.action_needed is False
+    assert result.should_surface is True
+    assert result.interview_date is None

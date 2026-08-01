@@ -70,6 +70,7 @@ Do not include markdown.
 Do not include explanation outside JSON.
 
 Allowed primary_category values:
+- APPLICATION_SUBMISSION
 - INITIAL_RECRUITER_OUTREACH
 - RECRUITER_FOLLOW_UP
 - JOB_INTERVIEW
@@ -103,6 +104,14 @@ Allowed priority values:
 - MEDIUME
 - HIGH
 - URGENT
+
+- APPLICATION_SUBMISSION:
+  A confirmation that the candidate successfully applied for a specific
+  position or that the application was received.
+
+- APPLICATION_UPDATE:
+  A general status change for an application that was already submitted.
+  Do not use this for the original application receipt confirmation.
 
 Rules:
 1. Choose exactly one primary_category.

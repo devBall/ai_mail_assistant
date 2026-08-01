@@ -2,6 +2,7 @@ from enum import StrEnum
 
 class EmailCategory(StrEnum):
     """Enum for email categories."""
+    APPLICATION_SUBMISSION = "APPLICATION_SUBMISSION"
     JOB_INTERVIEW = "JOB_INTERVIEW"
     INTERVIEW_CONFIRMATION = "INTERVIEW_CONFIRMATION"
     
